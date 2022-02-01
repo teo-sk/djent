@@ -19,9 +19,28 @@ const buildAndSaveMidi = compose(
     })),
 )
 
-//    saveAudioPlaylistAsWav :: audioPlaylist -> ()
-const saveAudioPlaylistAsWav = audioPlaylist => renderAudioPlaylistItemToBuffer(audioPlaylist)
-    .fork(logError, saveAsFile('wav', 'djen'))
+const saveAudioPlaylistAsWav = audioPlaylist => {
+    // Get instruments used in da groove
+    const instruments = audioPlaylist[0].instruments
+    const audioBuffers = []
+
+    const addToInstrumentBufferArray = buffer => {
+        audioBuffers.push(buffer)
+
+        // We got buffers for all the instruments
+        if (audioBuffers.length == instruments.length) {
+            saveAsFile('zip', 'djen', audioBuffers, instruments)
+        }   
+    }
+    
+    // Get an audio track for each of the instruments
+    instruments.forEach((instrument, i) => {
+
+        audioPlaylist[0].currentInstrument = instrument.id
+        renderAudioPlaylistItemToBuffer(audioPlaylist)
+        .fork(logError, addToInstrumentBufferArray)
+    })
+}
 
 const SaveModal = ({ onMIDISave, onWAVSave }) => (
     <div>
