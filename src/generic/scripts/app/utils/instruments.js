@@ -104,6 +104,7 @@ const renderAudioTemplateAtTempo = (instruments, bpmMultiplier) =>
             fadeInDuration,
             fadeOutDuration,
             reverb,
+            instrumentId: instrument.id
           },
         ]
       }, [])

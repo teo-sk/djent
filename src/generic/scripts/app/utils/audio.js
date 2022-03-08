@@ -65,10 +65,14 @@ const loadInstrumentBuffers = (context, instruments) =>
         filter(filterInstrumentsWithSounds),
     )(instruments)
 
-
 //    getBufferFromAudioTemplate :: audioTemplate -> timeLength -> Task audioBuffer
-const getBufferFromAudioTemplate = (audioTemplate, timeLength) => {
+const getBufferFromAudioTemplate = (audioTemplate, timeLength, currentInstrument) => {
     const offlineCtx = new OfflineAudioContext(2, 44100 * timeLength, 44100)
+
+    // CurrentInstrument is set -> extract instrument's buffers only
+    if (currentInstrument !== undefined) {
+        audioTemplate = audioTemplate.filter(buffer => buffer.instrumentId == currentInstrument)
+    }
 
     audioTemplate.forEach(({
         buffer,
@@ -79,24 +83,29 @@ const getBufferFromAudioTemplate = (audioTemplate, timeLength) => {
         fadeInDuration,
         fadeOutDuration,
     }) => {
-        playSound(offlineCtx, buffer, startTime, duration, volume, pitchAmount, fadeInDuration, fadeOutDuration)
+            playSound(offlineCtx, buffer, startTime, duration, volume, pitchAmount, fadeInDuration, fadeOutDuration, currentInstrument)
+        return
     })
 
     return Task((rej, res) => {
-        offlineCtx.oncomplete = ev => res(ev.renderedBuffer)
+        offlineCtx.oncomplete = ev => {
+            const renderedBuffer = ev.renderedBuffer
+            res(renderedBuffer)
+        }
         offlineCtx.onerror    = () => rej(Error('Failed rendering buffer'))
         offlineCtx.startRendering()
     })
 }
 
 //    renderBuffer :: {sequences, bpm, audioTemplate} -> Task audioBuffer
-const renderBuffer = ({ sequences, bpm, audioTemplate }) => {
+const renderBuffer = ({ sequences, bpm, audioTemplate, currentInstrument }) => {
     const duration = getTotalTimeLength(sequences, bpm)
-    return getBufferFromAudioTemplate(audioTemplate, duration)
+    return getBufferFromAudioTemplate(audioTemplate, duration, currentInstrument)
 }
 
 //    combineAudioBuffers :: [audioBuffer] -> Task audioBuffer
 const combineAudioBuffers = (audioBuffers) => {
+
     let totalDuration = 0
     const audioTemplate = audioBuffers.map((buffer) => {
         const startTime = totalDuration
@@ -110,6 +119,7 @@ const combineAudioBuffers = (audioBuffers) => {
             volume: 1,
         }
     })
+
     return getBufferFromAudioTemplate(audioTemplate, totalDuration)
 }
 
@@ -128,9 +138,8 @@ const getPitchPlaybackRatio = (pitchAmount) => {
     return pitchIsPositive ? 1 / val : val
 }
 
-const playSound = (context, buffer, time, duration, volume, pitchAmount = 0, fadeInDuration = 0, fadeOutDuration = 0) => {
+const playSound = (context, buffer, time, duration, volume, pitchAmount = 0, fadeInDuration = 0, fadeOutDuration = 0, currentInstrument) => {
     if (!buffer) return
-
     const source = context.createBufferSource()
     const gainNode = context.createGain()
     const durationMultiplier = getPitchPlaybackRatio(pitchAmount)
@@ -152,6 +161,8 @@ const playSound = (context, buffer, time, duration, volume, pitchAmount = 0, fad
         gainNode.gain.linearRampToValueAtTime(0, time + duration + fadeOutDuration)
     }
     source.start(time, 0, (duration + fadeOutDuration) * durationMultiplier)
+    source.currentInstrument = currentInstrument
+
     return source
 }
 
