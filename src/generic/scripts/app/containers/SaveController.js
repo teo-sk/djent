@@ -21,7 +21,7 @@ const buildAndSaveMidi = compose(
 
 const saveAudioPlaylistAsWav = audioPlaylist => {
     // Get instruments used in da groove
-    const instruments = audioPlaylist[0].instruments
+    let instruments = extractUniqueInstruments(audioPlaylist)
     const audioBuffers = []
 
     const addToInstrumentBufferArray = buffer => {
@@ -32,14 +32,40 @@ const saveAudioPlaylistAsWav = audioPlaylist => {
             saveAsFile('zip', 'djen', audioBuffers, instruments)
         }   
     }
-    
+
     // Get an audio track for each of the instruments
     instruments.forEach((instrument, i) => {
 
-        audioPlaylist[0].currentInstrument = instrument.id
+        audioPlaylist.forEach( audioPlaylist => audioPlaylist.currentInstrument = instrument.id)
         renderAudioPlaylistItemToBuffer(audioPlaylist)
         .fork(logError, addToInstrumentBufferArray)
     })
+}
+
+// Returns an array of non duplicate intruments used in grooves
+const extractUniqueInstruments = (audioPlaylist) => {
+    let instruments = []
+
+    for (let i=0; i<audioPlaylist.length; i++) {
+        let isInArray = false
+        for (let j=0; j<audioPlaylist[i].instruments.length; j++) {
+            let currentInstrument = audioPlaylist[i].instruments[j]
+
+            // push a nonexisting instrument in the array of instruments into that array
+            instruments.forEach(item => {
+                if (item.id == currentInstrument.id) {
+                    isInArray = true
+                }
+            })
+            if (isInArray !== true) {
+                instruments.push(currentInstrument)
+                console.log(instruments)
+            }
+            isInArray = false
+        }
+    }
+
+    return instruments
 }
 
 const SaveModal = ({ onMIDISave, onWAVSave }) => (

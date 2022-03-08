@@ -4,7 +4,7 @@ import JSZip from  'jszip'
 import { saveAs } from 'file-saver';
 
 const downloadZip = (a, fileName, audioBuffers, instruments) => {
-
+    
     const wavArray = []
     // Buffer to wav
     audioBuffers.forEach(audioBuffer => wavArray.push(audioBufferToWav(audioBuffer)))
